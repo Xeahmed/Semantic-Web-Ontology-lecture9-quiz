@@ -1,0 +1,792 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 9: Semantic Web & Ontology Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f4f4f9, #e0e0e0);
+            color: #333;
+            padding: 20px;
+            transition: all 0.3s ease;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            flex: 1;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        body.dark-mode .header {
+            background-color: #2a2a2a;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .dark-mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .dark-mode-toggle:hover {
+            background-color: #0056b3;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            height: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: #28a745;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+
+        .question {
+            background-color: #ffffff;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.5s ease-in;
+            direction: ltr;
+        }
+
+        body.dark-mode .question {
+            background-color: #2a2a2a;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .question h3 {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .options label {
+            display: block;
+            padding: 12px;
+            margin: 8px 0;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        body.dark-mode .options label {
+            background-color: #3a3a3a;
+        }
+
+        .options label:hover {
+            background-color: #e0e0e0;
+            transform: scale(1.02);
+        }
+
+        body.dark-mode .options label:hover {
+            background-color: #4a4a4a;
+        }
+
+        .options input {
+            margin-right: 10px;
+        }
+
+        .feedback {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            direction: rtl;
+            text-align: right;
+            font-size: 1em;
+        }
+
+        .correct {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .wrong {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .submit-btn {
+            padding: 12px 25px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .submit-btn:hover {
+            background-color: #218838;
+            transform: scale(1.1);
+            animation: bounce 0.3s;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1.1); }
+            50% { transform: scale(1.15); }
+        }
+
+        .next-btn {
+            padding: 12px 25px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            display: none;
+            transition: background-color 0.3s;
+        }
+
+        .next-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .score {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: none;
+        }
+
+        body.dark-mode .score {
+            background-color: #2a2a2a;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .score h2 {
+            margin-bottom: 10px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: auto;
+            color: #666;
+        }
+
+        body.dark-mode footer {
+            color: #aaa;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .question {
+                padding: 15px;
+            }
+
+            .dark-mode-toggle {
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.2em;
+            }
+
+            .question h3 {
+                font-size: 1em;
+            }
+
+            .options label {
+                padding: 10px;
+            }
+
+            .submit-btn, .next-btn {
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="dark-mode-toggle" onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    <div class="container">
+        <div class="header">
+            <h1>Lecture 9: Semantic Web & Ontology Quiz</h1>
+            <p>This quiz page was created by XE AHMED REFAT – EELU Student Sohag branch</p>
+        </div>
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+        <div id="quiz">
+            <!-- Questions will be populated by JavaScript -->
+        </div>
+        <div class="score" id="score"></div>
+    </div>
+    <footer>
+        <p>© XE_Ahmed – EELU Sohag</p>
+    </footer>
+
+    <script>
+        // Helper function to escape HTML characters
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        const questions = [
+            {
+                question: "What is the primary purpose of JSON-LD in RDF?",
+                options: [
+                    "To create database schemas",
+                    "To represent RDF data in JSON for web applications",
+                    "To store data in XML format",
+                    "To define Ontology rules"
+                ],
+                correct: 1,
+                difficulty: "Easy",
+                explanation: "الـ JSON-LD بيستخدم عشان يمثل الـ RDF data بصيغة JSON، وده بيسهل استخدامها في الـ web applications زي المواقع والتطبيقات."
+            },
+            {
+                question: "Which element serves as the root for RDF/XML documents?",
+                options: [
+                    "<ex:title>",
+                    "<rdf:Description>",
+                    "<rdf:RDF>",
+                    "<rdf:resource>"
+                ],
+                correct: 2,
+                difficulty: "Medium",
+                explanation: "الـ `<rdf:RDF>` هو الـ root element في RDF/XML، وبيحتوي على كل الـ descriptions والـ resources في الـ document."
+            },
+            {
+                question: "In JSON-LD, what does the `@context` keyword define?",
+                options: [
+                    "The XML structure of the data",
+                    "The triples of the RDF graph",
+                    "The relationships between classes",
+                    "The vocabulary and prefixes used in the document"
+                ],
+                correct: 3,
+                difficulty: "Easy",
+                explanation: "الـ `@context` في JSON-LD بيحدد الـ vocabulary والـ prefixes اللي بتستخدم في الـ document، عشان الـ data تبقى مرتبطة بـ URIs."
+            },
+            {
+                question: "What is an Ontology in the Semantic Web?",
+                options: [
+                    "A dictionary and rulebook for machines to understand data",
+                    "A programming language for web design",
+                    "A database for storing RDF data",
+                    "A tool for creating JSON-LD files"
+                ],
+                correct: 0,
+                difficulty: "Easy",
+                explanation: "الـ Ontology هي زي قاموس وكتاب قواعد بيساعد الـ machines تفهم الـ data وازاي القطع المختلفة مترابطة."
+            },
+            {
+                question: "Which component of an Ontology represents specific examples of a concept?",
+                options: [
+                    "Rules",
+                    "Classes",
+                    "Properties",
+                    "Instances"
+                ],
+                correct: 3,
+                difficulty: "Easy",
+                explanation: "الـ Instances هي الأمثلة المحددة لـ class، زي 'تفاحة' instance من class الـ Fruit."
+            },
+            {
+                question: "In RDF/XML, what does the `<rdf:resource>` attribute do?",
+                options: [
+                    "Links to another resource’s URI",
+                    "Defines the root element",
+                    "Specifies the document’s title",
+                    "Describes a property"
+                ],
+                correct: 0,
+                difficulty: "Medium",
+                explanation: "الـ `<rdf:resource>` في RDF/XML بيستخدم عشان يربط بـ URI لـ resource تاني، زي الـ author بتاع كتاب."
+            },
+            {
+                question: "What is a possible relationship in a University Ontology?",
+                options: [
+                    "A Department is an instance of a Student",
+                    "A Professor teaches a Course",
+                    "A Student is a type of Course",
+                    "A Course enrolls in a Professor"
+                ],
+                correct: 1,
+                difficulty: "Medium",
+                explanation: "في الـ University Ontology، علاقة زي 'الـ Professor بيدرّس Course' هي مثال صحيح لـ relationship."
+            },
+            {
+                question: "How does Ontology assist in e-commerce?",
+                options: [
+                    "By creating advertisements",
+                    "By storing customer data",
+                    "By understanding relationships between products",
+                    "By designing website layouts"
+                ],
+                correct: 2,
+                difficulty: "Hard",
+                explanation: "الـ Ontology بتساعد في الـ e-commerce عن طريق فهم العلاقات بين الـ products، زي إن الـ laptop مرتبط بـ laptop bags."
+            },
+            {
+                question: "What does the `@graph` keyword in JSON-LD contain?",
+                options: [
+                    "The external resource links",
+                    "All the triples as JSON objects",
+                    "The document’s metadata",
+                    "The Ontology rules"
+                ],
+                correct: 1,
+                difficulty: "Medium",
+                explanation: "الـ `@graph` في JSON-LD بيحتوي على كل الـ triples في صورة JSON objects."
+            },
+            {
+                question: "Which of the following is a rule in an Ontology?",
+                options: [
+                    "Fruit is a type of Food",
+                    "If something is a Fruit, it cannot be a Vegetable",
+                    "Apple is an instance of Fruit",
+                    "Lionel Messi plays Football"
+                ],
+                correct: 1,
+                difficulty: "Medium",
+                explanation: "الـ rules في الـ Ontology بتحدد القيود، زي إن الـ Fruit ما ينفعش يكون Vegetable."
+            },
+            {
+                question: "In the Semantic Web, what role does Ontology play?",
+                options: [
+                    "It creates web pages",
+                    "It encrypts data for security",
+                    "It provides structure and meaning to data",
+                    "It stores data in a database"
+                ],
+                correct: 2,
+                difficulty: "Easy",
+                explanation: "الـ Ontology بتوفر الهيكلية والمعنى للـ data في الـ Semantic Web، عشان الـ machines تفهمها."
+            },
+            {
+                question: "What is a Class in an Ontology?",
+                options: [
+                    "A relationship between concepts",
+                    "A specific example of a concept",
+                    "A category or main idea",
+                    "A rule governing the Ontology"
+                ],
+                correct: 2,
+                difficulty: "Easy",
+                explanation: "الـ Classes في الـ Ontology هي الفئات أو الأفكار الرئيسية، زي Fruit أو Vegetable."
+            },
+            {
+                question: "In a Healthcare Ontology, what might it link?",
+                options: [
+                    "Courses to departments",
+                    "Products to advertisements",
+                    "Photos to locations",
+                    "Symptoms to diseases"
+                ],
+                correct: 3,
+                difficulty: "Medium",
+                explanation: "في الـ Healthcare Ontology، بيتربط بين الأعراض والأمراض أو الأدوية والآثار الجانبية."
+            },
+            {
+                question: "What does the `<ex:title>` element represent in RDF/XML?",
+                options: [
+                    "A link to another document",
+                    "The URI of a resource",
+                    "A property of a resource",
+                    "The root element"
+                ],
+                correct: 2,
+                difficulty: "Medium",
+                explanation: "الـ `<ex:title>` في RDF/XML هو property بتاع resource، زي عنوان كتاب."
+            },
+            {
+                question: "In a Social Media Ontology, what can a photo be tagged with?",
+                options: [
+                    "People, locations, or events",
+                    "Classes and rules",
+                    "RDF triples",
+                    "Database schemas"
+                ],
+                correct: 0,
+                difficulty: "Easy",
+                explanation: "في الـ Social Media Ontology، الصور ممكن تتـ tag بـ people، locations، أو events."
+            },
+            {
+                question: "What is an instance in the University Ontology example?",
+                options: [
+                    "Teaches",
+                    "Student",
+                    "John (a Student)",
+                    "Department"
+                ],
+                correct: 2,
+                difficulty: "Easy",
+                explanation: "في الـ University Ontology، 'John' هو instance من class الـ Student."
+            },
+            {
+                question: "How does Ontology help search engines?",
+                options: [
+                    "By generating advertisements",
+                    "By storing search history",
+                    "By creating web layouts",
+                    "By distinguishing ambiguous terms like 'apple'"
+                ],
+                correct: 3,
+                difficulty: "Medium",
+                explanation: "الـ Ontology بتساعد الـ search engines تفرق بين المصطلحات الغامضة زي 'apple' (فاكهة ولا شركة)."
+            },
+            {
+                question: "Which RDF format is XML-based?",
+                options: [
+                    "Turtle",
+                    "RDF/XML",
+                    "JSON-LD",
+                    "N-Triples"
+                ],
+                correct: 1,
+                difficulty: "Medium",
+                explanation: "الـ RDF/XML هو الـ format اللي بيستخدم XML عشان يمثل الـ RDF data."
+            },
+            {
+                question: "What is a Property in an Ontology?",
+                options: [
+                    "A category or main idea",
+                    "A specific example of a class",
+                    "A connection between concepts",
+                    "A rule for the Ontology"
+                ],
+                correct: 2,
+                difficulty: "Easy",
+                explanation: "الـ Properties في الـ Ontology هي الروابط بين الـ concepts، زي 'plays' بين Messi والـ Football."
+            },
+            {
+                question: "In JSON-LD, what does the `@id` keyword represent?",
+                options: [
+                    "The external vocabulary",
+                    "The root of the document",
+                    "The title of a resource",
+                    "The subject of a triple"
+                ],
+                correct: 3,
+                difficulty: "Hard",
+                explanation: "الـ `@id` في JSON-LD بيمثل الـ subject بتاع الـ triple، يعني الـ resource اللي بنتكلم عنه."
+            },
+            {
+                question: "The `@context` in JSON-LD defines the vocabulary and prefixes.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، الـ `@context` بيحدد الـ vocabulary والـ prefixes في JSON-LD."
+            },
+            {
+                question: "RDF/XML is an XML-based format for RDF.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، الـ RDF/XML هو format بيستخدم XML عشان يمثل الـ RDF data."
+            },
+            {
+                question: "Ontology helps machines understand relationships between data.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، الـ Ontology بتساعد الـ machines تفهم العلاقات بين الـ data."
+            },
+            {
+                question: "In RDF/XML, `<rdf:about>` specifies the URI of a resource.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Medium",
+                explanation: "صح، الـ `<rdf:about>` بيحدد الـ URI بتاع الـ resource في RDF/XML."
+            },
+            {
+                question: "A Fruit cannot be a Vegetable in an Ontology due to a rule.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، الـ Ontology ممكن تحدد rule إن الـ Fruit ما ينفعش يكون Vegetable."
+            },
+            {
+                question: "The `@graph` keyword in JSON-LD contains all triples as JSON objects.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Medium",
+                explanation: "صح، الـ `@graph` بيحتوي على كل الـ triples في صورة JSON objects."
+            },
+            {
+                question: "Ontology is used only in the Semantic Web and not in other fields.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Easy",
+                explanation: "غلط، الـ Ontology بتستخدم في مجالات زي الـ healthcare والـ e-commerce كمان."
+            },
+            {
+                question: "In a University Ontology, a Student cannot be a Professor.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، في الـ University Ontology، فيه rule إن الـ Student ما ينفعش يكون Professor."
+            },
+            {
+                question: "The Semantic Web does not use Ontology for search queries like 'healthy recipes.'",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Medium",
+                explanation: "غلط، الـ Semantic Web بيستخدم الـ Ontology عشان يفهم إن 'healthy' مرتبط بـ nutrition و'recipes' بـ food."
+            },
+            {
+                question: "Instances in an Ontology are different from Classes.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، الـ Instances هي أمثلة محددة لـ Classes، مش هما الـ Classes نفسها."
+            },
+            {
+                question: "RDF/XML does not use `<rdf:Description>` to describe resources.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Medium",
+                explanation: "غلط، الـ `<rdf:Description>` بيستخدم عشان يوصف الـ resources في RDF/XML."
+            },
+            {
+                question: "Ontology originated as a term in computer science.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Medium",
+                explanation: "غلط، كلمة Ontology جت من الفلسفة، وبعدين اتعملت في الـ computer science."
+            },
+            {
+                question: "A Course in a University Ontology does not need to belong to a Department.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Easy",
+                explanation: "غلط، في الـ University Ontology، فيه rule إن الـ Course لازم يكون تابع لـ Department."
+            },
+            {
+                question: "Ontology does not help social media platforms tag photos with events.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Easy",
+                explanation: "غلط، الـ Ontology بتساعد الـ social media platforms تـ tag الصور بـ events أو locations."
+            },
+            {
+                question: "The `<ex:author>` element in RDF/XML is not a root element.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Medium",
+                explanation: "صح، الـ `<ex:author>` هو property، مش root element. الـ root هو `<rdf:RDF>`."
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+
+        function updateProgress() {
+            const progress = document.getElementById('progress');
+            const percentage = ((currentQuestion + 1) / questions.length) * 100;
+            progress.style.width = `${percentage}%`;
+        }
+
+        function loadQuestion() {
+            const quizDiv = document.getElementById('quiz');
+            const question = questions[currentQuestion];
+            let html = `
+                <div class="question">
+                    <h3>${currentQuestion + 1}. ${escapeHTML(question.question)} (${question.difficulty})</h3>
+                    <div class="options">
+            `;
+
+            if (question.type === 'truefalse') {
+                html += `
+                    <label><input type="radio" name="answer" value="true"> True</label>
+                    <label><input type="radio" name="answer" value="false"> False</label>
+                `;
+            } else {
+                question.options.forEach((option, index) => {
+                    html += `
+                        <label><input type="radio" name="answer" value="${index}"> ${escapeHTML(option)}</label>
+                    `;
+                });
+            }
+
+            html += `
+                    </div>
+                    <button class="submit-btn" onclick="submitAnswer()">Submit</button>
+                    <div class="feedback" id="feedback"></div>
+                    <button class="next-btn" onclick="nextQuestion()">Next</button>
+                </div>
+            `;
+
+            quizDiv.innerHTML = html;
+            updateProgress();
+        }
+
+        function submitAnswer() {
+            const selected = document.querySelector('input[name="answer"]:checked');
+            const feedbackDiv = document.getElementById('feedback');
+            const question = questions[currentQuestion];
+
+            if (!selected) {
+                feedbackDiv.style.display = 'block';
+                feedbackDiv.className = 'feedback wrong';
+                feedbackDiv.innerHTML = 'من فضلك اختار إجابة!';
+                return;
+            }
+
+            const isCorrect = question.type === 'truefalse'
+                ? selected.value === question.correct.toString()
+                : parseInt(selected.value) === question.correct;
+
+            feedbackDiv.style.display = 'block';
+            feedbackDiv.className = `feedback ${isCorrect ? 'correct' : 'wrong'}`;
+            feedbackDiv.innerHTML = isCorrect
+                ? `صح! ${question.explanation}`
+                : `غلط! ${question.explanation}`;
+
+            if (isCorrect) score++;
+
+            document.querySelector('.submit-btn').style.display = 'none';
+            document.querySelector('.next-btn').style.display = 'block';
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion < questions.length) {
+                loadQuestion();
+            } else {
+                showScore();
+            }
+        }
+
+        function showScore() {
+            const quizDiv = document.getElementById('quiz');
+            const scoreDiv = document.getElementById('score');
+            quizDiv.style.display = 'none';
+            scoreDiv.style.display = 'block';
+
+            let feedback = '';
+            const percentage = (score / questions.length) * 100;
+            if (percentage >= 80) {
+                feedback = 'ممتاز! عملت شغل عالي جداً، كمل كده!';
+            } else if (percentage >= 50) {
+                feedback = 'كويس! بس فيه مجال للتحسين، ركز أكتر.';
+            } else {
+                feedback = 'محتاج تذاكر أكتر! جرب تراجع الـ lecture تاني.';
+            }
+
+            scoreDiv.innerHTML = `
+                <h2>Your Final Score: ${score} out of ${questions.length}</h2>
+                <p>Percentage: ${percentage.toFixed(2)}%</p>
+                <p>${feedback}</p>
+            `;
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+
+        // Load the first question
+        loadQuestion();
+    </script>
+</body>
+</html>
